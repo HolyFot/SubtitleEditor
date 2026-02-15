@@ -1,0 +1,44 @@
+{
+  "font_path": "C:\\Windows\\Fonts\\impact.ttf",
+  "font_size": 85,
+  "text_case": "uppercase",
+  "text_color": [
+    0,
+    255,
+    180
+  ],
+  "highlight_color": [
+    255,
+    0,
+    255
+  ],
+  "stroke_enabled": true,
+  "stroke_color": [
+    0,
+    60,
+    40
+  ],
+  "stroke_width": 2,
+  "shadow_enabled": false,
+  "highlight_box_enabled": false,
+  "glow_enabled": true,
+  "glow_color": [
+    0,
+    255,
+    180
+  ],
+  "glow_size": 14,
+  "gradient_enabled": false,
+  "bevel_enabled": false,
+  "chrome_enabled": false,
+  "chrome_opacity": 0.5,
+  "texture_enabled": false,
+  "texture_scale": 1.0,
+  "texture_opacity": 0.85,
+  "texture_blend_mode": "screen",
+  "max_words_per_line": 4,
+  "position_x_ratio": 0.5,
+  "position_y_ratio": 0.85,
+  "text_justify": "center",
+  "highlight_mode": "character"
+}

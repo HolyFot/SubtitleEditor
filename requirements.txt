@@ -1,0 +1,13 @@
+moviepy
+pillow
+rich
+numpy
+sounddevice
+scipy
+soundfile
+pyworld
+torchcrepe
+pyrubberband
+pedalboard
+faster-whisper
+soundfile

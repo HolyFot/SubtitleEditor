@@ -1,0 +1,213 @@
+{
+  "Default White": {
+    "font_size": 48,
+    "text_color": [
+      255,
+      255,
+      255
+    ],
+    "highlight_color": [
+      255,
+      255,
+      0
+    ],
+    "stroke_enabled": true,
+    "stroke_color": [
+      0,
+      0,
+      0
+    ],
+    "stroke_width": 2,
+    "shadow_enabled": true,
+    "shadow_offset": [
+      2,
+      2
+    ],
+    "shadow_blur": 3,
+    "highlight_box_enabled": false,
+    "glow_enabled": false,
+    "gradient_enabled": false,
+    "bevel_enabled": false,
+    "chrome_enabled": false,
+    "max_words_per_line": 6,
+    "position_y_ratio": 0.85
+  },
+  "Karaoke Classic": {
+    "font_size": 52,
+    "text_color": [
+      255,
+      255,
+      255
+    ],
+    "highlight_color": [
+      0,
+      200,
+      255
+    ],
+    "stroke_enabled": true,
+    "stroke_color": [
+      0,
+      0,
+      80
+    ],
+    "stroke_width": 3,
+    "shadow_enabled": true,
+    "shadow_offset": [
+      3,
+      3
+    ],
+    "shadow_blur": 5,
+    "highlight_box_enabled": false,
+    "glow_enabled": true,
+    "glow_color": [
+      0,
+      150,
+      255
+    ],
+    "glow_size": 8,
+    "gradient_enabled": false,
+    "bevel_enabled": false,
+    "chrome_enabled": false,
+    "max_words_per_line": 5,
+    "position_y_ratio": 0.82
+  },
+  "Neon Glow": {
+    "font_size": 50,
+    "text_color": [
+      0,
+      255,
+      180
+    ],
+    "highlight_color": [
+      255,
+      0,
+      255
+    ],
+    "stroke_enabled": true,
+    "stroke_color": [
+      0,
+      60,
+      40
+    ],
+    "stroke_width": 2,
+    "shadow_enabled": false,
+    "highlight_box_enabled": false,
+    "glow_enabled": true,
+    "glow_color": [
+      0,
+      255,
+      180
+    ],
+    "glow_size": 14,
+    "gradient_enabled": false,
+    "bevel_enabled": false,
+    "chrome_enabled": false,
+    "max_words_per_line": 5,
+    "position_y_ratio": 0.85
+  },
+  "Cinema Gold": {
+    "font_size": 46,
+    "text_color": [
+      255,
+      215,
+      0
+    ],
+    "highlight_color": [
+      255,
+      255,
+      255
+    ],
+    "stroke_enabled": true,
+    "stroke_color": [
+      80,
+      50,
+      0
+    ],
+    "stroke_width": 2,
+    "shadow_enabled": true,
+    "shadow_offset": [
+      2,
+      3
+    ],
+    "shadow_blur": 6,
+    "highlight_box_enabled": false,
+    "glow_enabled": false,
+    "gradient_enabled": true,
+    "gradient_color1": [
+      255,
+      215,
+      0
+    ],
+    "gradient_color2": [
+      200,
+      120,
+      0
+    ],
+    "gradient_opacity": 0.8,
+    "bevel_enabled": true,
+    "bevel_depth": 3,
+    "chrome_enabled": false,
+    "max_words_per_line": 6,
+    "position_y_ratio": 0.88
+  },
+  "Minimal Clean": {
+    "font_size": 40,
+    "text_color": [
+      240,
+      240,
+      240
+    ],
+    "highlight_color": [
+      100,
+      200,
+      255
+    ],
+    "stroke_enabled": false,
+    "shadow_enabled": true,
+    "shadow_offset": [
+      1,
+      1
+    ],
+    "shadow_blur": 2,
+    "highlight_box_enabled": false,
+    "glow_enabled": false,
+    "gradient_enabled": false,
+    "bevel_enabled": false,
+    "chrome_enabled": false,
+    "max_words_per_line": 7,
+    "position_y_ratio": 0.9
+  },
+  "Bold Red": {
+    "font_size": 56,
+    "text_color": [
+      255,
+      40,
+      40
+    ],
+    "highlight_color": [
+      255,
+      255,
+      0
+    ],
+    "stroke_enabled": true,
+    "stroke_color": [
+      0,
+      0,
+      0
+    ],
+    "stroke_width": 4,
+    "shadow_enabled": true,
+    "shadow_offset": [
+      3,
+      3
+    ],
+    "shadow_blur": 4,
+    "highlight_box_enabled": false,
+    "glow_enabled": false,
+    "gradient_enabled": false,
+    "bevel_enabled": false,
+    "chrome_enabled": false,
+    "max_words_per_line": 4,
+    "position_y_ratio": 0.85
+  }
+}
