@@ -108,6 +108,8 @@ def create_word_fancytext(
     # Handle explicit newlines: split by \n, then split each segment into words
     # Use LINEBREAK_MARKER to preserve explicit line breaks
     LINEBREAK_MARKER = "\x00"
+    # Normalize line endings: \r\n -> \n, then \r -> \n
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
     words = []
     for segment in text.upper().split('\n'):
         segment = segment.strip()
@@ -220,6 +222,7 @@ def create_word_fancytext_adv(
     max_words_per_line=4,
     position_y_ratio=0.72,
     position_x_ratio=0.5,
+    text_justify="center",
     shadow_enabled=True,
     shadow_offset=(2, 2),
     shadow_blur=4,
@@ -370,8 +373,11 @@ def create_word_fancytext_adv(
     # Handle explicit newlines: split by \n, then split each segment into words
     # Use LINEBREAK_MARKER to preserve explicit line breaks
     LINEBREAK_MARKER = "\x00"
+    # Normalize line endings: \r\n -> \n, then \r -> \n
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    # Note: text case transformation should be done by caller
     words = []
-    for segment in text.upper().split('\n'):
+    for segment in text.split('\n'):
         segment = segment.strip()
         if not segment:
             continue
@@ -403,9 +409,27 @@ def create_word_fancytext_adv(
     lines = _group_words_into_lines(
         words, pil_font, max_words_per_line, max_line_px)
 
-    y_pos = int(height * position_y_ratio)
+    # Calculate line heights first to properly center the text block (match preview)
+    dummy_img = Image.new("RGBA", (1, 1))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    line_heights = []
+    for line_words in lines:
+        if not line_words:
+            continue
+        line_text = " ".join(line_words)
+        bbox = dummy_draw.textbbox((0, 0), line_text, font=pil_font)
+        lh = bbox[3] - bbox[1]
+        line_heights.append(lh)
+    
+    line_spacing = int(font_size * 0.25)
+    total_text_h = sum(line_heights) + line_spacing * (len(line_heights) - 1) if line_heights else 0
+    # Center the block around position_y_ratio (same as preview)
+    base_y = int(height * position_y_ratio) - total_text_h // 2
+    
     clips = []
     word_idx = 0
+    current_line_y = base_y
+    line_idx = 0
 
     for line_words in lines:
         if not line_words:  # Skip empty lines
@@ -502,11 +526,14 @@ def create_word_fancytext_adv(
             idx = min(int(t / _wd), _n - 1)
             return _alpha[idx]
 
+        # Map text_justify to MoviePy horizontal position
+        h_pos = text_justify if text_justify in ("left", "right", "center") else "center"
+        
         line_clip = VideoClip(frame_function=_make_frame, duration=line_dur)
         line_clip = (
             line_clip
             .with_start(line_start)
-            .with_position(("center", y_pos))
+            .with_position((h_pos, current_line_y))
         )
         mask_clip = VideoClip(frame_function=_make_mask_frame, duration=line_dur, is_mask=True)
         mask_clip = mask_clip.with_start(line_start)
@@ -514,6 +541,10 @@ def create_word_fancytext_adv(
 
         clips.append(line_clip)
         word_idx += n_words_in_line
+        # Move to next line Y position (matching preview behavior)
+        if line_idx < len(line_heights):
+            current_line_y += line_heights[line_idx] + line_spacing
+            line_idx += 1
 
     return clips
 
@@ -566,6 +597,8 @@ def create_static_fancytext(
         A transparent ``ImageClip`` with mask, positioned and timed.
     """
     pil_font = _load_font(font_size, font)
+    # Normalize line endings: \r\n -> \n, then \r -> \n
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
     text = text.upper()
 
     # Wrap text into lines
@@ -667,6 +700,8 @@ def create_text_overlay(
     pil_font = _load_font(font_size, font)
     max_w = width - 100
 
+    # Normalize line endings: \r\n -> \n, then \r -> \n
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
     lines = _wrap_text_by_width(text, max_w, pil_font)
 
     line_height = 70

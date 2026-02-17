@@ -2929,9 +2929,9 @@ class SubtitleEditorApp(tk.Tk):
     def _load_video_file(self, path):
         try:
             try:
-                from moviepy.editor import VideoFileClip
-            except ModuleNotFoundError:
                 from moviepy import VideoFileClip
+            except ModuleNotFoundError:
+                from moviepy.editor import VideoFileClip  # type: ignore
             # Close previous clip
             if self._video_clip is not None:
                 try:
@@ -3441,6 +3441,9 @@ class SubtitleEditorApp(tk.Tk):
                         dlg.after(0, lambda: _on_export_complete(out_path, None))
                     else:
                         dlg.after(0, lambda: _on_export_complete(None, "Export cancelled"))
+                except InterruptedError:
+                    # Cancellation - not an error
+                    dlg.after(0, lambda: _on_export_complete(None, "Export cancelled"))
                 except Exception as e:
                     import traceback
                     traceback.print_exc()
@@ -3478,12 +3481,12 @@ class SubtitleEditorApp(tk.Tk):
 
     def _render_video(self, out_path, settings=None):
         try:
-            from moviepy.editor import (
+            from moviepy import (
                 ImageClip, AudioFileClip,
                 CompositeVideoClip, VideoFileClip,
             )
         except ModuleNotFoundError:
-            from moviepy import (
+            from moviepy.editor import (  # type: ignore
                 ImageClip, AudioFileClip,
                 CompositeVideoClip, VideoFileClip,
             )
@@ -3579,12 +3582,12 @@ class SubtitleEditorApp(tk.Tk):
     def _render_video_with_progress(self, out_path, settings, progress_callback, cancel_flag):
         """Render video with progress updates."""
         try:
-            from moviepy.editor import (
+            from moviepy import (
                 ImageClip, AudioFileClip,
                 CompositeVideoClip, VideoFileClip,
             )
         except ModuleNotFoundError:
-            from moviepy import (
+            from moviepy.editor import (  # type: ignore
                 ImageClip, AudioFileClip,
                 CompositeVideoClip, VideoFileClip,
             )
@@ -3755,9 +3758,9 @@ class SubtitleEditorApp(tk.Tk):
         """Build the final mixed audio clip for export, applying all FX."""
         import numpy as np
         try:
-            from moviepy.editor import AudioFileClip, CompositeAudioClip, AudioClip
-        except ModuleNotFoundError:
             from moviepy import AudioFileClip, CompositeAudioClip, AudioClip
+        except ModuleNotFoundError:
+            from moviepy.editor import AudioFileClip, CompositeAudioClip, AudioClip  # type: ignore
 
         def _pad_audio_to_duration(audio_clip, target_duration):
             """Ensure audio clip is exactly the target duration."""
@@ -3861,6 +3864,7 @@ class SubtitleEditorApp(tk.Tk):
                     max_words_per_line=self._max_words_per_line,
                     position_y_ratio=self._position_y_ratio,
                     position_x_ratio=self._position_x_ratio,
+                    text_justify=self._text_justify,
                     shadow_enabled=self._shadow_enabled,
                     shadow_offset=self._shadow_offset,
                     shadow_blur=self._shadow_blur,
