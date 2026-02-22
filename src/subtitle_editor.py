@@ -3897,14 +3897,15 @@ class SubtitleEditorApp(tk.Tk):
                     chrome_enabled=self._chrome_enabled,
                     chrome_opacity=self._chrome_opacity,
                 )
+                # Extend ALL clips so text stays visible for the full subtitle duration
                 if word_clips and sub_duration > highlight_dur:
                     extra = sub_duration - highlight_dur
-                    last = word_clips[-1]
-                    new_dur = last.duration + extra
-                    word_clips[-1] = last.with_duration(new_dur)
-                    if word_clips[-1].mask is not None:
-                        word_clips[-1].mask = (
-                            word_clips[-1].mask.with_duration(new_dur))
+                    for i_clip in range(len(word_clips)):
+                        new_dur = word_clips[i_clip].duration + extra
+                        word_clips[i_clip] = word_clips[i_clip].with_duration(new_dur)
+                        if word_clips[i_clip].mask is not None:
+                            word_clips[i_clip].mask = (
+                                word_clips[i_clip].mask.with_duration(new_dur))
                 if word_clips:
                     lead_in = highlight_dur * 0.05
                     all_clips.extend(

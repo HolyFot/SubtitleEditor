@@ -424,7 +424,21 @@ def create_word_fancytext_adv(
     line_spacing = int(font_size * 0.25)
     total_text_h = sum(line_heights) + line_spacing * (len(line_heights) - 1) if line_heights else 0
     # Center the block around position_y_ratio (same as preview)
-    base_y = int(height * position_y_ratio) - total_text_h // 2
+    # Compute the same margin that _render_fancytext_frame uses internally
+    # so we can offset clip positions to compensate for the padding above
+    # the text within each clip frame.
+    _pad = stroke_width
+    if shadow_enabled:
+        _pad = max(_pad,
+                   shadow_blur * 2 + stroke_width + max(abs(shadow_offset[0]),
+                                                         abs(shadow_offset[1])))
+    if glow_enabled:
+        _pad = max(_pad, glow_size * 2 + stroke_width)
+    if highlight_box_enabled:
+        _pad = max(_pad, 12 + highlight_box_blur * 2)
+    _frame_margin = max(20, _pad + 10)
+
+    base_y = int(height * position_y_ratio) - total_text_h // 2 - _frame_margin
     
     clips = []
     word_idx = 0
@@ -464,9 +478,9 @@ def create_word_fancytext_adv(
         frames = list(line_cache["np_frames"])
         text_masks = list(line_cache["text_only_masks"])
 
-        # 2. Apply Photoshop-style effects
+        # 2. Apply Photoshop-style effects (including no-highlight frame)
         if has_fx:
-            for i in range(n_words_in_line):
+            for i in range(len(frames)):
                 # Use the clean text-only mask (no shadow / highlight-box
                 # bleed) for accurate advanced effects.
                 # Pass stroke_width=0 since mask is fill-only (matches preview)
@@ -507,36 +521,41 @@ def create_word_fancytext_adv(
                     chrome_opacity=chrome_opacity,
                 )
 
-        # 3. Build clip for this line
-        line_start = start_offset + word_idx * word_dur
-        line_dur = n_words_in_line * word_dur
+        # 3. Build clip for this line — visible for the FULL duration
+        #    so all word-wrapped lines remain on screen together.
+        line_highlight_start = start_offset + word_idx * word_dur
 
-        rgb_frames = [np.ascontiguousarray(f[:, :, :3]) for f in frames]
+        # Separate highlight frames (0..n-1) from the no-highlight frame (n)
+        rgb_frames = [np.ascontiguousarray(f[:, :, :3]) for f in frames[:n_words_in_line]]
         alpha_frames = [
-            f[:, :, 3].astype(np.float32) * (1.0 / 255.0) for f in frames
+            f[:, :, 3].astype(np.float32) * (1.0 / 255.0)
+            for f in frames[:n_words_in_line]
         ]
+        no_hi_rgb = np.ascontiguousarray(frames[n_words_in_line][:, :, :3])
+        no_hi_alpha = frames[n_words_in_line][:, :, 3].astype(np.float32) * (1.0 / 255.0)
 
         def _make_frame(t, _rgb=rgb_frames, _wd=word_dur,
-                        _n=n_words_in_line):
-            idx = min(int(t / _wd), _n - 1)
+                        _n=n_words_in_line, _start=line_highlight_start,
+                        _no_hi=no_hi_rgb):
+            if t < _start or t >= _start + _n * _wd:
+                return _no_hi
+            idx = min(int((t - _start) / _wd), _n - 1)
             return _rgb[idx]
 
         def _make_mask_frame(t, _alpha=alpha_frames, _wd=word_dur,
-                             _n=n_words_in_line):
-            idx = min(int(t / _wd), _n - 1)
+                             _n=n_words_in_line, _start=line_highlight_start,
+                             _no_hi_a=no_hi_alpha):
+            if t < _start or t >= _start + _n * _wd:
+                return _no_hi_a
+            idx = min(int((t - _start) / _wd), _n - 1)
             return _alpha[idx]
 
         # Map text_justify to MoviePy horizontal position
         h_pos = text_justify if text_justify in ("left", "right", "center") else "center"
         
-        line_clip = VideoClip(frame_function=_make_frame, duration=line_dur)
-        line_clip = (
-            line_clip
-            .with_start(line_start)
-            .with_position((h_pos, current_line_y))
-        )
-        mask_clip = VideoClip(frame_function=_make_mask_frame, duration=line_dur, is_mask=True)
-        mask_clip = mask_clip.with_start(line_start)
+        line_clip = VideoClip(frame_function=_make_frame, duration=duration)
+        line_clip = line_clip.with_position((h_pos, current_line_y))
+        mask_clip = VideoClip(frame_function=_make_mask_frame, duration=duration, is_mask=True)
         line_clip.mask = mask_clip
 
         clips.append(line_clip)
@@ -1296,6 +1315,17 @@ def _render_fancytext_frame(
 
         np_frames.append(np.array(frame))
         text_only_masks.append(np.array(text_only)[:, :, 3])
+
+    # 6. "No highlight" frame — all words in default colour ------
+    frame_no_hi = base.copy()
+    text_only_no_hi = Image.new("RGBA", (frame_width, img_h), (0, 0, 0, 0))
+    for i in range(n):
+        wimg, wpx, wpy = word_normal[i]
+        frame_no_hi.paste(wimg, (wpx, wpy), wimg)
+        mimg, mpx, mpy = word_mask_normal[i]
+        text_only_no_hi.paste(mimg, (mpx, mpy), mimg)
+    np_frames.append(np.array(frame_no_hi))
+    text_only_masks.append(np.array(text_only_no_hi)[:, :, 3])
 
     # Cache everything for subsequent calls
     if cache is not None:

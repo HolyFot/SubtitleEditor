@@ -1854,16 +1854,15 @@ def build_subtitle_clips(subtitles: list[dict], width: int, height: int) -> list
                 shadow_blur=5,
             )
 
-            # Extend the last clip so the text (with last word highlighted)
-            # stays visible for the full subtitle duration instead of
-            # disappearing when the fast highlight pass finishes.
+            # Extend ALL clips so the text stays visible for the full
+            # subtitle duration (all word-wrapped lines persist together).
             if word_clips and sub_duration > highlight_dur:
                 extra = sub_duration - highlight_dur
-                last = word_clips[-1]
-                new_dur = last.duration + extra
-                word_clips[-1] = last.with_duration(new_dur)
-                if word_clips[-1].mask is not None:
-                    word_clips[-1].mask = word_clips[-1].mask.with_duration(new_dur)
+                for i_clip in range(len(word_clips)):
+                    new_dur = word_clips[i_clip].duration + extra
+                    word_clips[i_clip] = word_clips[i_clip].with_duration(new_dur)
+                    if word_clips[i_clip].mask is not None:
+                        word_clips[i_clip].mask = word_clips[i_clip].mask.with_duration(new_dur)
 
             # FancyText has an internal 5% lead-in (start_offset = duration * 0.05)
             # before the first word highlights.  Shift clips back so the first
