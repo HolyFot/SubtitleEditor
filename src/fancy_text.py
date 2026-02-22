@@ -537,16 +537,20 @@ def create_word_fancytext_adv(
         def _make_frame(t, _rgb=rgb_frames, _wd=word_dur,
                         _n=n_words_in_line, _start=line_highlight_start,
                         _no_hi=no_hi_rgb):
-            if t < _start or t >= _start + _n * _wd:
-                return _no_hi
+            if t < _start:
+                return _no_hi          # before this line's turn — no highlight
+            if t >= _start + _n * _wd:
+                return _rgb[_n - 1]    # after — keep all words highlighted
             idx = min(int((t - _start) / _wd), _n - 1)
             return _rgb[idx]
 
         def _make_mask_frame(t, _alpha=alpha_frames, _wd=word_dur,
                              _n=n_words_in_line, _start=line_highlight_start,
                              _no_hi_a=no_hi_alpha):
-            if t < _start or t >= _start + _n * _wd:
+            if t < _start:
                 return _no_hi_a
+            if t >= _start + _n * _wd:
+                return _alpha[_n - 1]
             idx = min(int((t - _start) / _wd), _n - 1)
             return _alpha[idx]
 
@@ -1290,21 +1294,24 @@ def _render_fancytext_frame(
             ))
 
     # 5. Assemble all N frames from pre-rendered pieces ---------
+    #    Frame hi highlights words 0..hi (cumulative) so that once a
+    #    word is highlighted it stays highlighted, matching the preview.
     np_frames = []
     text_only_masks = []  # clean text alpha without shadow/box/glow for FX
     for hi in range(n):
         frame = base.copy()
 
-        # Highlight box (drawn between shadow and text layers)
+        # Highlight boxes for all words highlighted so far
         if hi_boxes:
-            bimg, bpx, bpy = hi_boxes[hi]
-            frame.paste(bimg, (bpx, bpy), bimg)
+            for bi in range(hi + 1):
+                bimg, bpx, bpy = hi_boxes[bi]
+                frame.paste(bimg, (bpx, bpy), bimg)
 
         # Paste pre-rendered word images (with glow) for visual frame
         # Build separate text-only mask (no glow) for effects
         text_only = Image.new("RGBA", (frame_width, img_h), (0, 0, 0, 0))
         for i in range(n):
-            if i == hi:
+            if i <= hi:
                 wimg, wpx, wpy = word_highlight[i]
                 mimg, mpx, mpy = word_mask_highlight[i]
             else:
