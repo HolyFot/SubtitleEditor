@@ -41,27 +41,19 @@ Note: you can use \r in a subtitle to make a new line.
 
 ## Installation
 
-1. Clone the repository (or just download):
-```bash
-git clone https://github.com/yourusername/SubtitleEditor.git
-cd SubtitleEditor
+### Quick Start (Recommended)
+
+**Windows:**
+```batch
+install.bat
+run.bat
 ```
 
-2. Create a virtual environment:
+**Mac/Linux:**
 ```bash
-python -m venv venv
-venv\Scripts\activate  # Windows
-source venv/bin/activate  # Linux/Mac
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Run the application:
-```bash
-python src/subtitle_editor.py
+chmod +x install.sh run.sh
+./install.sh
+./run.sh
 ```
 
 ## Usage
