@@ -863,6 +863,7 @@ class SubtitleEditorApp(tk.Tk):
                        command=self._export_srt)
         fm.add_separator()
         fm.add_command(label="  Export Video\u2026", command=self._export_video)
+        fm.add_command(label="  Create Short\u2026", command=self._create_short)
         fm.add_separator()
         fm.add_command(label="  Exit", command=self.destroy)
         file_btn["menu"] = fm
@@ -963,6 +964,15 @@ class SubtitleEditorApp(tk.Tk):
                   bg=C.SUCCESS, fg="#fff", relief="flat",
                   font=("Segoe UI", 8, "bold"), padx=10, pady=2,
                   activebackground="#2ecc71",
+                  activeforeground="#fff", cursor="hand2",
+                  bd=0, highlightthickness=0).pack(
+            side=tk.LEFT, padx=2)
+
+        tk.Button(tb, text="\U0001F4F1 Create Short",
+                  command=self._create_short,
+                  bg="#8b5cf6", fg="#fff", relief="flat",
+                  font=("Segoe UI", 8, "bold"), padx=10, pady=2,
+                  activebackground="#7c3aed",
                   activeforeground="#fff", cursor="hand2",
                   bd=0, highlightthickness=0).pack(
             side=tk.LEFT, padx=2)
@@ -3753,6 +3763,283 @@ class SubtitleEditorApp(tk.Tk):
 
         audio_clip.close()
         progress_callback(100, "Export complete!")
+
+    # ────────────────────────────────────────────────────────────
+    # Create Short (vertical video, shortened clips, no subs)
+    # ────────────────────────────────────────────────────────────
+    def _create_short(self):
+        """Export a 9:16 vertical short (1080x1920) at max 80 seconds with no subtitles."""
+        if not self.video_clips:
+            messagebox.showwarning("Create Short", "No video clips on the timeline.")
+            return
+        if not self.audio_path:
+            messagebox.showwarning("Create Short", "No audio loaded.")
+            return
+
+        out_path = filedialog.asksaveasfilename(
+            title="Save Short As",
+            defaultextension=".mp4",
+            filetypes=[("MP4", "*.mp4"), ("All files", "*.*")])
+        if not out_path:
+            return
+
+        SHORT_DURATION = 80  # 1:20
+        SHORT_W, SHORT_H = 1080, 1920
+
+        # ── Build progress dialog ──
+        dlg = tk.Toplevel(self)
+        dlg.title("Create Short")
+        dlg.configure(bg=C.BG)
+        dlg.transient(self)
+        dlg.grab_set()
+        dlg.resizable(False, False)
+        dlg.update_idletasks()
+        pw, ph = self.winfo_width(), self.winfo_height()
+        px, py = self.winfo_x(), self.winfo_y()
+        dw, dh = 400, 200
+        dlg.geometry(f"{dw}x{dh}+{px + (pw - dw) // 2}+{py + (ph - dh) // 2}")
+
+        progress_var = tk.DoubleVar(value=0)
+        progress_label = tk.Label(dlg, text="Preparing short...",
+                                  bg=C.BG, fg=C.TEXT, font=("Segoe UI", 10))
+        progress_label.pack(fill=tk.X, padx=20, pady=(20, 10))
+
+        style = ttk.Style()
+        style.configure("Short.Horizontal.TProgressbar",
+                        troughcolor="#2a2a2a", background="#8b5cf6",
+                        borderwidth=0, thickness=24)
+        progress_bar = ttk.Progressbar(dlg, variable=progress_var,
+                                       maximum=100, length=340, mode='determinate',
+                                       style="Short.Horizontal.TProgressbar")
+        progress_bar.pack(padx=20, pady=(0, 5), ipady=6)
+
+        info_frame = tk.Frame(dlg, bg=C.BG)
+        info_frame.pack(fill=tk.X, padx=20, pady=(5, 0))
+        progress_pct = tk.Label(info_frame, text="0%",
+                                bg=C.BG, fg=C.TEXT, font=("Segoe UI", 9, "bold"))
+        progress_pct.pack(side=tk.LEFT)
+        progress_elapsed = tk.Label(info_frame, text="Elapsed: 0:00",
+                                    bg=C.BG, fg=C.TEXT_DIM, font=("Segoe UI", 8))
+        progress_elapsed.pack(side=tk.LEFT, padx=(15, 0))
+        progress_eta = tk.Label(info_frame, text="ETA: --:--",
+                                bg=C.BG, fg=C.TEXT_DIM, font=("Segoe UI", 8))
+        progress_eta.pack(side=tk.RIGHT)
+
+        export_cancelled = [False]
+        export_start_time = [time.time()]
+
+        def _cancel():
+            export_cancelled[0] = True
+            progress_label.config(text="Cancelling...")
+
+        cancel_btn = tk.Button(dlg, text="Cancel", command=_cancel,
+                               bg=C.SURFACE_LIGHT, fg=C.TEXT, relief="flat",
+                               font=("Segoe UI", 9), padx=15, pady=5,
+                               activebackground=C.SURFACE_HOVER, cursor="hand2")
+        cancel_btn.pack(pady=(15, 0))
+
+        def _format_time(seconds):
+            if seconds < 0:
+                return "--:--"
+            seconds = int(seconds)
+            if seconds < 3600:
+                return f"{seconds // 60}:{seconds % 60:02d}"
+            return f"{seconds // 3600}:{(seconds % 3600) // 60:02d}:{seconds % 60:02d}"
+
+        def _update_progress(pct, msg=""):
+            if export_cancelled[0]:
+                return
+            try:
+                progress_var.set(pct)
+                progress_pct.config(text=f"{int(pct)}%")
+                if msg:
+                    progress_label.config(text=msg)
+                if export_start_time[0]:
+                    elapsed = time.time() - export_start_time[0]
+                    progress_elapsed.config(text=f"Elapsed: {_format_time(elapsed)}")
+                    if pct > 0:
+                        remaining = elapsed / (pct / 100) - elapsed
+                        progress_eta.config(text=f"ETA: {_format_time(remaining)}")
+                dlg.update_idletasks()
+            except tk.TclError:
+                pass
+
+        def _worker():
+            try:
+                self._render_short_video(
+                    out_path, SHORT_W, SHORT_H, SHORT_DURATION,
+                    _update_progress, export_cancelled)
+                if not export_cancelled[0]:
+                    dlg.after(0, lambda: _on_done(out_path, None))
+                else:
+                    dlg.after(0, lambda: _on_done(None, "Export cancelled"))
+            except InterruptedError:
+                dlg.after(0, lambda: _on_done(None, "Export cancelled"))
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                dlg.after(0, lambda err=str(e): _on_done(None, err))
+
+        def _on_done(path, error):
+            if error:
+                progress_label.config(text=f"Error: {error}", fg=C.ERROR)
+                cancel_btn.config(text="Close", command=dlg.destroy)
+                self._status_var.set("Short creation failed")
+            else:
+                self._status_var.set(f"Short created: {os.path.basename(path)}")
+                dlg.destroy()
+                messagebox.showinfo("Create Short", f"Short saved to:\n{path}")
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _render_short_video(self, out_path, width, height, max_duration,
+                            progress_callback, cancel_flag):
+        """Render a vertical short: center-cropped video clips, shortened to max_duration, no subtitles."""
+        try:
+            from moviepy import (
+                ImageClip, AudioFileClip,
+                CompositeVideoClip, VideoFileClip, AudioClip, CompositeAudioClip,
+            )
+            from moviepy import vfx as mpy_vfx
+        except ModuleNotFoundError:
+            from moviepy.editor import (  # type: ignore
+                ImageClip, AudioFileClip,
+                CompositeVideoClip, VideoFileClip, AudioClip, CompositeAudioClip,
+            )
+            from moviepy import vfx as mpy_vfx  # type: ignore
+        from PIL import Image
+        import numpy as np
+
+        # Calculate original timeline duration from clips
+        original_duration = 0.0
+        if self.video_clips:
+            original_duration = max(original_duration, max(c.end for c in self.video_clips))
+        if self.audio_clips:
+            original_duration = max(original_duration, max(c.end for c in self.audio_clips))
+        if original_duration <= 0:
+            original_duration = self.audio_duration or 10.0
+
+        # Calculate speed factor: if timeline is longer than max_duration, compress
+        target_duration = min(original_duration, max_duration)
+        speed_factor = original_duration / target_duration if target_duration > 0 else 1.0
+
+        progress_callback(5, "Loading video clips...")
+        if cancel_flag[0]:
+            raise InterruptedError("Export cancelled")
+
+        # Build video clips – center-crop to fill vertical frame
+        video_layer_clips = []
+        black_bg = ImageClip(np.zeros((height, width, 3), dtype=np.uint8)).with_duration(target_duration)
+        video_layer_clips.append(black_bg)
+
+        sorted_video_clips = sorted(self.video_clips,
+                                    key=lambda c: (getattr(c, 'track_index', 0), c.start))
+
+        for vclip in sorted_video_clips:
+            try:
+                orig_clip_dur = vclip.end - vclip.start
+                if orig_clip_dur <= 0:
+                    continue
+
+                # Shortened timeline positions
+                short_start = vclip.start / speed_factor
+                short_dur = orig_clip_dur / speed_factor
+                # Clamp to target duration
+                if short_start >= target_duration:
+                    continue
+                short_dur = min(short_dur, target_duration - short_start)
+
+                if vclip.source_type == "video":
+                    src_clip = VideoFileClip(vclip.source_path)
+                    src_start = vclip.source_offset
+                    src_end = min(src_start + orig_clip_dur, src_clip.duration)
+                    if src_end > src_start:
+                        src_clip = src_clip.subclip(src_start, src_end)
+                    # Center-crop for vertical: scale so height fills, then crop width
+                    sw, sh = src_clip.size
+                    # Scale so that the source fills the target (cover, not fit)
+                    scale = max(width / sw, height / sh)
+                    new_w, new_h = int(sw * scale), int(sh * scale)
+                    src_clip = src_clip.with_effects([mpy_vfx.Resize((new_w, new_h))])
+                    # Crop to exact target size from center
+                    x_center = new_w // 2
+                    y_center = new_h // 2
+                    src_clip = src_clip.with_effects([mpy_vfx.Crop(
+                        x1=x_center - width // 2, y1=y_center - height // 2,
+                        x2=x_center + width // 2, y2=y_center + height // 2)])
+                else:
+                    # Image clip – center-crop to vertical
+                    img = Image.open(vclip.source_path).convert("RGB")
+                    iw, ih = img.size
+                    scale = max(width / iw, height / ih)
+                    nw, nh = int(iw * scale), int(ih * scale)
+                    img = img.resize((nw, nh), Image.LANCZOS)
+                    left = (nw - width) // 2
+                    top = (nh - height) // 2
+                    img = img.crop((left, top, left + width, top + height))
+                    src_clip = ImageClip(np.array(img)).with_duration(short_dur)
+
+                src_clip = src_clip.with_start(short_start).with_duration(short_dur)
+                video_layer_clips.append(src_clip)
+            except Exception as e:
+                print(f"[WARN] Short: failed to process clip {vclip.source_path}: {e}")
+
+        progress_callback(15, "Processing audio...")
+        if cancel_flag[0]:
+            raise InterruptedError("Export cancelled")
+
+        # Build audio, clamped to target duration
+        audio_clip = self._build_export_audio(original_duration)
+        if audio_clip.duration > target_duration:
+            audio_clip = audio_clip.subclipped(0, target_duration)
+
+        progress_callback(20, "Compositing short video...")
+        if cancel_flag[0]:
+            raise InterruptedError("Export cancelled")
+
+        # No subtitles – just video layers
+        final = CompositeVideoClip(
+            video_layer_clips,
+            size=(width, height),
+        ).with_duration(target_duration).with_fps(VIDEO_FPS)
+
+        final = final.with_audio(audio_clip)
+
+        # Custom progress logger (same pattern as _render_video_with_progress)
+        class ProgressLogger:
+            def __init__(self, callback, cflag):
+                self.callback = callback
+                self.cflag = cflag
+            def __call__(self, **kw):
+                return self
+            def iter_bar(self, **kw):
+                iterable = list(kw.values())[0] if kw else []
+                total = len(iterable) if hasattr(iterable, '__len__') else 100
+                for i, item in enumerate(iterable):
+                    if self.cflag[0]:
+                        raise InterruptedError("Export cancelled")
+                    pct = ((i + 1) / max(total, 1)) * 100
+                    self.callback(pct, "Encoding short...")
+                    yield item
+            def bars_callback(self, bar, attr, value, old_value=None):
+                pass
+
+        write_kwargs = {
+            "fps": VIDEO_FPS,
+            "codec": "libx264",
+            "preset": "medium",
+            "threads": 4,
+            "logger": ProgressLogger(
+                lambda pct, msg: progress_callback(25 + pct * 0.75, msg),
+                cancel_flag),
+            "ffmpeg_params": ["-crf", "20"],
+            "audio_codec": "aac",
+            "audio_bitrate": "320k",
+        }
+        final.write_videofile(out_path, **write_kwargs)
+
+        audio_clip.close()
+        progress_callback(100, "Short created!")
 
     def _build_export_audio(self, duration):
         """Build the final mixed audio clip for export, applying all FX."""
