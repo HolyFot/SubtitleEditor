@@ -3969,7 +3969,7 @@ class SubtitleEditorApp(tk.Tk):
         # libx264 requires even dimensions
         SHORT_W = SHORT_W + (SHORT_W % 2)
         SHORT_H = base_h
-        print(f"[DEBUG] Short output size: {SHORT_W}x{SHORT_H} (width_pct={settings['width_pct']}%)")
+        print(f"[DEBUG] Short output: {SHORT_W}x{SHORT_H} (width_pct={settings['width_pct']}%)")
 
         # Sync style variables so subtitle rendering has current values
         self._sync_style_vars()
@@ -4087,7 +4087,7 @@ class SubtitleEditorApp(tk.Tk):
     def _render_short_video(self, out_path, width, height, max_duration,
                             progress_callback, cancel_flag, *,
                             align="center", include_subs=False,
-                            font_scale_pct=60, start_seconds=0.0):
+                            font_scale_pct=100, start_seconds=0.0):
         """Render a vertical short with configurable crop alignment and optional subtitles.
 
         Parameters
@@ -4095,9 +4095,9 @@ class SubtitleEditorApp(tk.Tk):
         align : str
             Horizontal crop alignment: "left", "center", or "right".
         include_subs : bool
-            If True, render subtitles with reduced font size.
+            If True, render subtitles with scaled font size.
         font_scale_pct : int
-            Percentage (20-100) of the normal font size to use for subtitles.
+            Percentage (20-250) of the normal font size to use for subtitles.
         start_seconds : float
             Timeline offset in seconds — the short starts from this point.
         """
@@ -4148,7 +4148,7 @@ class SubtitleEditorApp(tk.Tk):
         if cancel_flag[0]:
             raise InterruptedError("Export cancelled")
 
-        # Build video clips – crop to fill vertical frame using chosen alignment
+        # Build video clips – scale to fill output frame, then crop with alignment
         video_layer_clips = []
         black_bg = ImageClip(np.zeros((height, width, 3), dtype=np.uint8)).with_duration(target_duration)
         video_layer_clips.append(black_bg)
@@ -4182,19 +4182,19 @@ class SubtitleEditorApp(tk.Tk):
                     src_end = min(src_start + short_dur, src_clip.duration)
                     if src_end > src_start:
                         src_clip = src_clip.subclip(src_start, src_end)
-                    # Scale so source fills the target (cover, not fit)
+                    # Scale so source covers the output frame (cover, not fit)
                     sw, sh = src_clip.size
                     scale = max(width / sw, height / sh)
                     new_w, new_h = int(sw * scale), int(sh * scale)
                     src_clip = src_clip.with_effects([mpy_vfx.Resize((new_w, new_h))])
-                    # Crop using chosen horizontal alignment
+                    # Crop to output frame using alignment
                     cx = _crop_x(new_w, width, align)
-                    cy = max(0, (new_h - height) // 2)  # always vertically centred
+                    cy = max(0, (new_h - height) // 2)
                     src_clip = src_clip.with_effects([mpy_vfx.Crop(
                         x1=cx, y1=cy,
                         x2=cx + width, y2=cy + height)])
                 else:
-                    # Image clip – crop to vertical with alignment
+                    # Image clip – scale to fill output frame, then crop
                     img = Image.open(vclip.source_path).convert("RGB")
                     iw, ih = img.size
                     scale = max(width / iw, height / ih)
