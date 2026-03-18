@@ -3768,7 +3768,7 @@ class SubtitleEditorApp(tk.Tk):
     # Create Short (vertical video, shortened clips, no subs)
     # ────────────────────────────────────────────────────────────
     def _create_short(self):
-        """Export a 9:16 vertical short (1080x1920) at max 80 seconds with no subtitles."""
+        """Export a 9:16 vertical short with configurable alignment, width, and subtitles."""
         if not self.video_clips:
             messagebox.showwarning("Create Short", "No video clips on the timeline.")
             return
@@ -3776,6 +3776,186 @@ class SubtitleEditorApp(tk.Tk):
             messagebox.showwarning("Create Short", "No audio loaded.")
             return
 
+        # ── Settings dialog ──
+        sdlg = tk.Toplevel(self)
+        sdlg.title("Create Short – Settings")
+        sdlg.configure(bg=C.BG)
+        sdlg.transient(self)
+        sdlg.grab_set()
+        sdlg.resizable(False, False)
+        sdlg.update_idletasks()
+        pw, ph = self.winfo_width(), self.winfo_height()
+        px, py = self.winfo_x(), self.winfo_y()
+        dw, dh = 400, 510
+        sdlg.geometry(f"{dw}x{dh}+{px + (pw - dw) // 2}+{py + (ph - dh) // 2}")
+
+        lbl_kw = dict(bg=C.BG, fg=C.TEXT, font=("Segoe UI", 9))
+        lbl_dim_kw = dict(bg=C.BG, fg=C.TEXT_DIM, font=("Segoe UI", 8))
+
+        tk.Label(sdlg, text="\U0001F4F1 Short Settings",
+                 bg=C.BG, fg=C.TEXT, font=("Segoe UI", 12, "bold")).pack(pady=(15, 10))
+
+        content = tk.Frame(sdlg, bg=C.BG)
+        content.pack(fill=tk.BOTH, expand=True, padx=25, pady=5)
+        content.columnconfigure(1, weight=1)
+
+        row = 0
+
+        # ── Horizontal Alignment ──
+        tk.Label(content, text="Crop Alignment", **lbl_kw).grid(
+            row=row, column=0, sticky="w", pady=5)
+        v_align = tk.StringVar(value="center")
+        align_frame = tk.Frame(content, bg=C.BG)
+        align_frame.grid(row=row, column=1, sticky="w", pady=5)
+        for alabel, aval in [("Left", "left"), ("Center", "center"), ("Right", "right")]:
+            tk.Radiobutton(align_frame, text=alabel, variable=v_align,
+                           value=aval, bg=C.BG, fg=C.TEXT,
+                           selectcolor=C.SURFACE,
+                           activebackground=C.BG, activeforeground=C.ACCENT,
+                           font=("Segoe UI", 9), indicatoron=True).pack(
+                side=tk.LEFT, padx=4)
+        row += 1
+
+        # ── Width % ──
+        tk.Label(content, text="Width %", **lbl_kw).grid(
+            row=row, column=0, sticky="w", pady=5)
+        width_frame = tk.Frame(content, bg=C.BG)
+        width_frame.grid(row=row, column=1, sticky="ew", pady=5)
+        v_width_pct = tk.DoubleVar(value=100.0)
+        width_scale = ttk.Scale(width_frame, from_=25, to=100,
+                                variable=v_width_pct, orient=tk.HORIZONTAL,
+                                length=140)
+        width_scale.pack(side=tk.LEFT)
+        width_lbl = tk.Label(width_frame, text="100%", bg=C.BG, fg=C.TEXT_DIM,
+                             font=("Segoe UI", 8), width=5)
+        width_lbl.pack(side=tk.LEFT, padx=5)
+        tk.Label(width_frame, text="of 1080px", **lbl_dim_kw).pack(side=tk.LEFT)
+
+        def _update_width_lbl(*_):
+            width_lbl.config(text=f"{int(v_width_pct.get())}%")
+        v_width_pct.trace_add("write", _update_width_lbl)
+        row += 1
+
+        # ── Subtitles toggle ──
+        tk.Label(content, text="Subtitles", **lbl_kw).grid(
+            row=row, column=0, sticky="w", pady=5)
+        v_subs = tk.StringVar(value="subs")
+        subs_frame = tk.Frame(content, bg=C.BG)
+        subs_frame.grid(row=row, column=1, sticky="w", pady=5)
+        tk.Radiobutton(subs_frame, text="No Subtitles", variable=v_subs,
+                       value="none", bg=C.BG, fg=C.TEXT,
+                       selectcolor=C.SURFACE,
+                       activebackground=C.BG, activeforeground=C.ACCENT,
+                       font=("Segoe UI", 9), indicatoron=True).pack(
+            side=tk.LEFT, padx=4)
+        tk.Radiobutton(subs_frame, text="With Subtitles", variable=v_subs,
+                       value="subs", bg=C.BG, fg=C.TEXT,
+                       selectcolor=C.SURFACE,
+                       activebackground=C.BG, activeforeground=C.ACCENT,
+                       font=("Segoe UI", 9), indicatoron=True).pack(
+            side=tk.LEFT, padx=4)
+        row += 1
+
+        # ── Font size reduction ──
+        tk.Label(content, text="Sub Font Scale", **lbl_kw).grid(
+            row=row, column=0, sticky="w", pady=5)
+        font_frame = tk.Frame(content, bg=C.BG)
+        font_frame.grid(row=row, column=1, sticky="ew", pady=5)
+        v_font_scale = tk.DoubleVar(value=100.0)
+        font_scale = ttk.Scale(font_frame, from_=20, to=250,
+                                variable=v_font_scale, orient=tk.HORIZONTAL,
+                                length=140)
+        font_scale.pack(side=tk.LEFT)
+        font_scale_lbl = tk.Label(font_frame, text="100%", bg=C.BG, fg=C.TEXT_DIM,
+                                  font=("Segoe UI", 8), width=5)
+        font_scale_lbl.pack(side=tk.LEFT, padx=5)
+        tk.Label(font_frame, text="of normal size", **lbl_dim_kw).pack(side=tk.LEFT)
+
+        def _update_font_lbl(*_):
+            font_scale_lbl.config(text=f"{int(v_font_scale.get())}%")
+        v_font_scale.trace_add("write", _update_font_lbl)
+        row += 1
+
+        # ── Max Duration ──
+        tk.Label(content, text="Max Duration (s)", **lbl_kw).grid(
+            row=row, column=0, sticky="w", pady=5)
+        v_max_dur = tk.IntVar(value=45)
+        dur_spin = tk.Spinbox(content, from_=5, to=300, textvariable=v_max_dur,
+                              width=6, bg=C.SURFACE, fg=C.TEXT,
+                              buttonbackground=C.SURFACE_LIGHT,
+                              font=("Segoe UI", 9))
+        dur_spin.grid(row=row, column=1, sticky="w", pady=5)
+        row += 1
+
+        # ── Start Seconds ──
+        tk.Label(content, text="Start At (s)", **lbl_kw).grid(
+            row=row, column=0, sticky="w", pady=5)
+        # Default to 25% into the timeline
+        timeline_dur = 0.0
+        if self.video_clips:
+            timeline_dur = max(timeline_dur, max(c.end for c in self.video_clips))
+        if self.audio_clips:
+            timeline_dur = max(timeline_dur, max(c.end for c in self.audio_clips))
+        if timeline_dur <= 0:
+            timeline_dur = self.audio_duration or 0.0
+        default_start = round(timeline_dur * 0.25, 1)
+        start_frame = tk.Frame(content, bg=C.BG)
+        start_frame.grid(row=row, column=1, sticky="w", pady=5)
+        v_start_sec = tk.DoubleVar(value=default_start)
+        start_spin = tk.Spinbox(start_frame, from_=0.0, to=max(0, timeline_dur - 1),
+                                textvariable=v_start_sec, increment=0.5,
+                                width=7, bg=C.SURFACE, fg=C.TEXT,
+                                buttonbackground=C.SURFACE_LIGHT,
+                                font=("Segoe UI", 9))
+        start_spin.pack(side=tk.LEFT)
+        tk.Label(start_frame, text=f"  (timeline: {timeline_dur:.1f}s)",
+                 **lbl_dim_kw).pack(side=tk.LEFT)
+        row += 1
+
+        # ── Info ──
+        tk.Label(content, text="Output is 9:16 vertical (1080×1920 at 100%)",
+                 **lbl_dim_kw).grid(row=row, column=0, columnspan=2,
+                                    sticky="w", pady=(10, 0))
+        row += 1
+
+        result = [None]  # will hold settings dict if user presses Create
+
+        def _on_create():
+            # Read scale values directly from widgets (ttk.Scale.get()
+            # is reliable; DoubleVar binding can lag on Windows).
+            wpct = int(width_scale.get())
+            fspct = int(font_scale.get())
+            print(f"[DEBUG] Short settings: width_pct={wpct}, font_scale={fspct}")
+            result[0] = {
+                "align": v_align.get(),
+                "width_pct": max(25, min(100, wpct)),
+                "subtitles": v_subs.get() == "subs",
+                "font_scale_pct": max(20, min(250, fspct)),
+                "max_duration": max(5, v_max_dur.get()),
+                "start_seconds": max(0.0, v_start_sec.get()),
+            }
+            sdlg.destroy()
+
+        # ── Buttons ──
+        btn_frame = tk.Frame(sdlg, bg=C.BG)
+        btn_frame.pack(pady=(5, 15))
+        tk.Button(btn_frame, text="Cancel", command=sdlg.destroy,
+                  bg=C.SURFACE_LIGHT, fg=C.TEXT, relief="flat",
+                  font=("Segoe UI", 9), padx=15, pady=5,
+                  activebackground=C.SURFACE_HOVER, cursor="hand2").pack(
+            side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="\U0001F4F1 Create Short", command=_on_create,
+                  bg="#8b5cf6", fg="#ffffff", relief="flat",
+                  font=("Segoe UI", 9, "bold"), padx=15, pady=5,
+                  activebackground="#7c3aed", cursor="hand2").pack(
+            side=tk.LEFT, padx=5)
+
+        sdlg.wait_window()
+        if result[0] is None:
+            return
+        settings = result[0]
+
+        # ── File dialog ──
         out_path = filedialog.asksaveasfilename(
             title="Save Short As",
             defaultextension=".mp4",
@@ -3783,8 +3963,16 @@ class SubtitleEditorApp(tk.Tk):
         if not out_path:
             return
 
-        SHORT_DURATION = 80  # 1:20
-        SHORT_W, SHORT_H = 1080, 1920
+        SHORT_DURATION = settings["max_duration"]
+        base_w, base_h = 1080, 1920
+        SHORT_W = max(120, int(base_w * settings["width_pct"] / 100))
+        # libx264 requires even dimensions
+        SHORT_W = SHORT_W + (SHORT_W % 2)
+        SHORT_H = base_h
+        print(f"[DEBUG] Short output size: {SHORT_W}x{SHORT_H} (width_pct={settings['width_pct']}%)")
+
+        # Sync style variables so subtitle rendering has current values
+        self._sync_style_vars()
 
         # ── Build progress dialog ──
         dlg = tk.Toplevel(self)
@@ -3868,7 +4056,11 @@ class SubtitleEditorApp(tk.Tk):
             try:
                 self._render_short_video(
                     out_path, SHORT_W, SHORT_H, SHORT_DURATION,
-                    _update_progress, export_cancelled)
+                    _update_progress, export_cancelled,
+                    align=settings["align"],
+                    include_subs=settings["subtitles"],
+                    font_scale_pct=settings["font_scale_pct"],
+                    start_seconds=settings["start_seconds"])
                 if not export_cancelled[0]:
                     dlg.after(0, lambda: _on_done(out_path, None))
                 else:
@@ -3893,8 +4085,22 @@ class SubtitleEditorApp(tk.Tk):
         threading.Thread(target=_worker, daemon=True).start()
 
     def _render_short_video(self, out_path, width, height, max_duration,
-                            progress_callback, cancel_flag):
-        """Render a vertical short: center-cropped video clips, shortened to max_duration, no subtitles."""
+                            progress_callback, cancel_flag, *,
+                            align="center", include_subs=False,
+                            font_scale_pct=60, start_seconds=0.0):
+        """Render a vertical short with configurable crop alignment and optional subtitles.
+
+        Parameters
+        ----------
+        align : str
+            Horizontal crop alignment: "left", "center", or "right".
+        include_subs : bool
+            If True, render subtitles with reduced font size.
+        font_scale_pct : int
+            Percentage (20-100) of the normal font size to use for subtitles.
+        start_seconds : float
+            Timeline offset in seconds — the short starts from this point.
+        """
         try:
             from moviepy import (
                 ImageClip, AudioFileClip,
@@ -3910,6 +4116,15 @@ class SubtitleEditorApp(tk.Tk):
         from PIL import Image
         import numpy as np
 
+        def _crop_x(scaled_w, target_w, alignment):
+            """Return the x-offset for cropping based on alignment."""
+            if alignment == "left":
+                return 0
+            elif alignment == "right":
+                return max(0, scaled_w - target_w)
+            else:  # center
+                return max(0, (scaled_w - target_w) // 2)
+
         # Calculate original timeline duration from clips
         original_duration = 0.0
         if self.video_clips:
@@ -3919,15 +4134,21 @@ class SubtitleEditorApp(tk.Tk):
         if original_duration <= 0:
             original_duration = self.audio_duration or 10.0
 
-        # Calculate speed factor: if timeline is longer than max_duration, compress
-        target_duration = min(original_duration, max_duration)
-        speed_factor = original_duration / target_duration if target_duration > 0 else 1.0
+        # Apply start offset — take a slice [t_start, t_start + max_duration]
+        t_start = max(0.0, min(start_seconds, original_duration - 1.0))
+        t_end = min(t_start + max_duration, original_duration)
+        target_duration = t_end - t_start
+        if target_duration <= 0:
+            raise ValueError("No content in the selected time range")
+
+        print(f"[DEBUG] Short slice: {t_start:.1f}s – {t_end:.1f}s  "
+              f"(duration={target_duration:.1f}s, output={width}x{height})")
 
         progress_callback(5, "Loading video clips...")
         if cancel_flag[0]:
             raise InterruptedError("Export cancelled")
 
-        # Build video clips – center-crop to fill vertical frame
+        # Build video clips – crop to fill vertical frame using chosen alignment
         video_layer_clips = []
         black_bg = ImageClip(np.zeros((height, width, 3), dtype=np.uint8)).with_duration(target_duration)
         video_layer_clips.append(black_bg)
@@ -3941,45 +4162,50 @@ class SubtitleEditorApp(tk.Tk):
                 if orig_clip_dur <= 0:
                     continue
 
-                # Shortened timeline positions
-                short_start = vclip.start / speed_factor
-                short_dur = orig_clip_dur / speed_factor
-                # Clamp to target duration
-                if short_start >= target_duration:
+                # Skip clips outside the [t_start, t_end] window
+                if vclip.end <= t_start or vclip.start >= t_end:
                     continue
-                short_dur = min(short_dur, target_duration - short_start)
+
+                # Clip boundaries within the short's time window
+                clip_start_in_short = max(0.0, vclip.start - t_start)
+                clip_end_in_short = min(vclip.end - t_start, target_duration)
+                short_dur = clip_end_in_short - clip_start_in_short
+                if short_dur <= 0:
+                    continue
 
                 if vclip.source_type == "video":
                     src_clip = VideoFileClip(vclip.source_path)
-                    src_start = vclip.source_offset
-                    src_end = min(src_start + orig_clip_dur, src_clip.duration)
+                    # Trim into the source: account for how much of the clip
+                    # is before our start window
+                    src_trim = max(0.0, t_start - vclip.start)
+                    src_start = vclip.source_offset + src_trim
+                    src_end = min(src_start + short_dur, src_clip.duration)
                     if src_end > src_start:
                         src_clip = src_clip.subclip(src_start, src_end)
-                    # Center-crop for vertical: scale so height fills, then crop width
+                    # Scale so source fills the target (cover, not fit)
                     sw, sh = src_clip.size
-                    # Scale so that the source fills the target (cover, not fit)
                     scale = max(width / sw, height / sh)
                     new_w, new_h = int(sw * scale), int(sh * scale)
                     src_clip = src_clip.with_effects([mpy_vfx.Resize((new_w, new_h))])
-                    # Crop to exact target size from center
-                    x_center = new_w // 2
-                    y_center = new_h // 2
+                    # Crop using chosen horizontal alignment
+                    cx = _crop_x(new_w, width, align)
+                    cy = max(0, (new_h - height) // 2)  # always vertically centred
                     src_clip = src_clip.with_effects([mpy_vfx.Crop(
-                        x1=x_center - width // 2, y1=y_center - height // 2,
-                        x2=x_center + width // 2, y2=y_center + height // 2)])
+                        x1=cx, y1=cy,
+                        x2=cx + width, y2=cy + height)])
                 else:
-                    # Image clip – center-crop to vertical
+                    # Image clip – crop to vertical with alignment
                     img = Image.open(vclip.source_path).convert("RGB")
                     iw, ih = img.size
                     scale = max(width / iw, height / ih)
                     nw, nh = int(iw * scale), int(ih * scale)
                     img = img.resize((nw, nh), Image.LANCZOS)
-                    left = (nw - width) // 2
-                    top = (nh - height) // 2
+                    left = _crop_x(nw, width, align)
+                    top = max(0, (nh - height) // 2)
                     img = img.crop((left, top, left + width, top + height))
                     src_clip = ImageClip(np.array(img)).with_duration(short_dur)
 
-                src_clip = src_clip.with_start(short_start).with_duration(short_dur)
+                src_clip = src_clip.with_start(clip_start_in_short).with_duration(short_dur)
                 video_layer_clips.append(src_clip)
             except Exception as e:
                 print(f"[WARN] Short: failed to process clip {vclip.source_path}: {e}")
@@ -3988,18 +4214,46 @@ class SubtitleEditorApp(tk.Tk):
         if cancel_flag[0]:
             raise InterruptedError("Export cancelled")
 
-        # Build audio, clamped to target duration
+        # Build audio — slice from t_start, then clamp to target duration
         audio_clip = self._build_export_audio(original_duration)
+        if t_start > 0 and audio_clip.duration > t_start:
+            audio_clip = audio_clip.subclipped(t_start, audio_clip.duration)
         if audio_clip.duration > target_duration:
             audio_clip = audio_clip.subclipped(0, target_duration)
+
+        # ── Optional subtitles ──
+        subtitle_clips = []
+        if include_subs and self.subtitles:
+            progress_callback(18, "Building subtitle clips...")
+            if cancel_flag[0]:
+                raise InterruptedError("Export cancelled")
+            # Build subtitle dicts with scaled-down font size
+            scaled_font_size = max(12, int(self._font_size * font_scale_pct / 100))
+            sub_dicts = []
+            for s in sorted(self.subtitles, key=lambda c: c.start):
+                # Skip subs outside the [t_start, t_end] window
+                if s.end <= t_start or s.start >= t_end:
+                    continue
+                # Shift timing relative to the short's start
+                adj_sub_start = max(0.0, s.start - t_start)
+                adj_sub_end = min(s.end - t_start, target_duration)
+                if adj_sub_end <= adj_sub_start:
+                    continue
+                d = s.as_dict()
+                d["start"] = adj_sub_start
+                d["end"] = adj_sub_end
+                d["font_size"] = scaled_font_size
+                sub_dicts.append(d)
+            if sub_dicts:
+                subtitle_clips = self._build_styled_clips(
+                    sub_dicts, width, height)
 
         progress_callback(20, "Compositing short video...")
         if cancel_flag[0]:
             raise InterruptedError("Export cancelled")
 
-        # No subtitles – just video layers
         final = CompositeVideoClip(
-            video_layer_clips,
+            [*video_layer_clips, *subtitle_clips],
             size=(width, height),
         ).with_duration(target_duration).with_fps(VIDEO_FPS)
 
